@@ -1,0 +1,16 @@
+target/
+*.class
+*.jar
+*.war
+*.ear
+.DS_Store
+.idea/
+*.iml
+.vscode/
+*.env
+.env
+.env.local
+application-local.yml
+mvnw
+mvnw.cmd
+.mvn/
