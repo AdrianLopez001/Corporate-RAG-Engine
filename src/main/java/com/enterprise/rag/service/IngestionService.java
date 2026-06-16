@@ -26,7 +26,7 @@ public class IngestionService {
     private static final int CHUNK_OVERLAP = 350;
 
     public int ingestDocument(MultipartFile file) {
-        log.info("Iniciando ingestão do documento: {}", file.getOriginalFilename());
+        log.info("Starting ingestion for document: {}", file.getOriginalFilename());
 
         try {
             ByteArrayResource resource = new ByteArrayResource(file.getBytes()) {
@@ -36,11 +36,9 @@ public class IngestionService {
                 }
             };
 
-            // Tika suporta PDF, DOCX, TXT e outros formatos automaticamente
             TikaDocumentReader reader = new TikaDocumentReader(resource);
             List<Document> rawDocuments = reader.get();
 
-            // Adiciona metadados de origem em cada chunk
             rawDocuments.forEach(doc ->
                     doc.getMetadata().putAll(Map.of(
                             "source", file.getOriginalFilename(),
@@ -53,13 +51,13 @@ public class IngestionService {
 
             vectorStore.accept(chunks);
 
-            log.info("Documento '{}' ingerido com sucesso em {} chunks.", file.getOriginalFilename(), chunks.size());
+            log.info("Document '{}' ingested successfully into {} chunks.", file.getOriginalFilename(), chunks.size());
             return chunks.size();
 
         } catch (IOException e) {
-            throw new DocumentIngestionException("Falha ao ler o arquivo: " + file.getOriginalFilename(), e);
+            throw new DocumentIngestionException("Failed to read file: " + file.getOriginalFilename(), e);
         } catch (Exception e) {
-            throw new DocumentIngestionException("Falha ao processar o documento para o vector store.", e);
+            throw new DocumentIngestionException("Failed to process document into vector store.", e);
         }
     }
 }

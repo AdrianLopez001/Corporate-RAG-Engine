@@ -10,6 +10,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -23,17 +24,17 @@ public class ChatService {
     private static final double SIMILARITY_THRESHOLD = 0.70;
 
     private static final String SYSTEM_PROMPT = """
-            Você é um assistente virtual corporativo especialista.
-            Responda a pergunta do usuário utilizando APENAS o contexto fornecido abaixo.
-            Se a resposta não puder ser encontrada no contexto, diga educadamente que não possui essa informação.
-            Não invente informações. Seja objetivo e preciso.
+            You are an expert corporate virtual assistant.
+            Answer the user's question using ONLY the context provided below.
+            If the answer cannot be found in the context, politely state that you do not have that information.
+            Do not fabricate information. Be objective and precise.
 
-            CONTEXTO:
+            CONTEXT:
             {context}
             """;
 
     public ChatResponse askQuestion(String userQuery) {
-        log.debug("Processando query: {}", userQuery);
+        log.debug("Processing query: {}", userQuery);
 
         List<Document> relevantDocs = vectorStore.similaritySearch(
                 SearchRequest.builder()
@@ -43,14 +44,14 @@ public class ChatService {
                         .build()
         );
 
-        log.debug("{} documento(s) relevante(s) encontrado(s) para a query.", relevantDocs.size());
+        log.debug("Found {} relevant document(s) for query.", relevantDocs.size());
 
         String context = relevantDocs.stream()
                 .map(Document::getFormattedContent)
-                .reduce("", (a, b) -> a + "\n\n" + b);
+                .collect(Collectors.joining("\n\n"));
 
         List<String> sources = relevantDocs.stream()
-                .map(doc -> (String) doc.getMetadata().getOrDefault("source", "desconhecido"))
+                .map(doc -> (String) doc.getMetadata().getOrDefault("source", "unknown"))
                 .distinct()
                 .toList();
 

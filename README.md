@@ -1,93 +1,111 @@
-# RAG Enterprise Backend
+# Corporate RAG Engine
 
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-brightgreen)
 ![Spring AI](https://img.shields.io/badge/Spring%20AI-1.0.0-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)
-![CI](https://github.com/adrianlopes/rag-enterprise-backend/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/AdrianLopez001/Corporate-RAG-Engine/actions/workflows/ci.yml/badge.svg)
 
-## Sobre o Projeto
+## Overview
 
-Backend corporativo de **Retrieval-Augmented Generation (RAG)** construído com as tecnologias padrão de mercado para sistemas de IA em Java.
+Enterprise-grade **Retrieval-Augmented Generation (RAG)** backend built with the industry-standard Java AI stack.
 
-O sistema permite fazer upload de documentos (PDF, DOCX, TXT) e realizar perguntas em linguagem natural sobre o conteúdo ingerido. As respostas são geradas pelo modelo da OpenAI com base **exclusivamente** no contexto recuperado do banco vetorial, eliminando alucinações.
+The system accepts document uploads (PDF, DOCX, TXT), splits them into semantic chunks, stores embeddings in a vector database, and answers natural-language questions using **only** the retrieved context — preventing hallucinations.
 
-## Arquitetura
+## Architecture
 
 ```
-[Cliente] → POST /api/v1/documents/ingest (PDF/DOCX)
+[Client] → POST /api/v1/documents/ingest (PDF / DOCX / TXT)
                ↓
          [IngestionService]
-         Tika → TokenTextSplitter → Embeddings (text-embedding-3-small)
+         Apache Tika → TokenTextSplitter (1200 tokens, 350 overlap)
                ↓
-         [pgvector - PostgreSQL]
+         Embedding Model (text-embedding-3-small)
+               ↓
+         [pgvector — PostgreSQL / HNSW index]
 
-[Cliente] → POST /api/v1/chat/query
+[Client] → POST /api/v1/chat/query
                ↓
          [ChatService]
-         similaritySearch (cosine, threshold=0.70, topK=4)
+         similaritySearch (cosine · threshold=0.70 · topK=4)
                ↓
-         System Prompt + Contexto → GPT-4o-mini
+         System Prompt + Context → GPT-4o-mini
                ↓
-         [ChatResponse: answer + sources]
+         [ChatResponse: answer + source list]
 ```
 
-## Stack Técnica
+## Tech Stack
 
-| Camada         | Tecnologia                        |
+| Layer          | Technology                        |
 |----------------|-----------------------------------|
 | Framework      | Spring Boot 3.3 + Spring AI 1.0.0 |
 | LLM            | OpenAI GPT-4o-mini                |
 | Embeddings     | text-embedding-3-small (1536 dim) |
 | Vector Store   | PostgreSQL + pgvector (HNSW)      |
-| Leitura de Doc | Apache Tika                       |
+| Document Parser| Apache Tika                       |
 | Containers     | Docker + Docker Compose           |
 | Java           | 21 (Records, Text Blocks)         |
+| API Docs       | SpringDoc OpenAPI 3 (Swagger UI)  |
 
-## Como Executar Localmente
+## Running Locally
 
-### Pré-requisitos
-- Docker e Docker Compose
-- Chave de API da OpenAI
+### Prerequisites
+- Docker Desktop running
+- OpenAI API key
 
-### 1. Subir o banco de dados
+### 1. Copy environment file
 ```bash
-docker-compose up postgres-vector -d
+cp .env.example .env
+# then edit .env and fill in OPENAI_API_KEY
 ```
 
-### 2. Configurar a chave de API
+### 2. Start the database
 ```bash
-export OPENAI_API_KEY=sk-...
+docker compose up postgres-vector -d
 ```
 
-### 3. Executar a aplicação
+### 3. Run the application
 ```bash
 ./mvnw spring-boot:run
 ```
 
-### Ou rodar tudo com Docker
+### Or run everything with Docker
 ```bash
-OPENAI_API_KEY=sk-... docker-compose up --build
+docker compose up --build
 ```
 
-## Endpoints
+### API Documentation
+Once running, open: `http://localhost:8080/swagger-ui.html`
 
-### Ingerir Documento
+## API Reference
+
+### Ingest Document
 ```http
 POST /api/v1/documents/ingest
 Content-Type: multipart/form-data
 
-file=@documento.pdf
+file=@report.pdf
+```
+```json
+{
+  "filename": "report.pdf",
+  "chunksCreated": 12,
+  "message": "Document ingested successfully."
+}
 ```
 
-### Fazer Pergunta
+### Ask a Question
 ```http
 POST /api/v1/chat/query
 Content-Type: application/json
 
+{ "query": "What is the company vacation policy?" }
+```
+```json
 {
-  "query": "Qual é a política de férias da empresa?"
+  "answer": "According to the HR handbook, employees are entitled to...",
+  "sources": ["hr-handbook.pdf"]
 }
 ```
 
@@ -96,10 +114,11 @@ Content-Type: application/json
 GET /actuator/health
 ```
 
-## Decisões de Design
+## Design Decisions
 
-- **`withSimilarityThreshold(0.70)`** — garante que apenas chunks semanticamente relevantes cheguem ao LLM, reduzindo ruído e alucinação.
-- **`ProblemDetail` (RFC 7807)** — padrão corporativo para respostas de erro estruturadas.
-- **`@RequiredArgsConstructor` + injeção via construtor** — testabilidade e imutabilidade.
-- **Metadados de source por chunk** — a resposta inclui quais documentos foram consultados.
-- **Multi-stage Dockerfile** — imagem de produção enxuta baseada apenas no JRE.
+- **`similarityThreshold(0.70)`** — only chunks with meaningful semantic overlap reach the LLM, cutting noise and reducing hallucination risk.
+- **`ProblemDetail` (RFC 7807)** — structured error responses compatible with any HTTP client.
+- **Constructor injection + `@RequiredArgsConstructor`** — immutability and straightforward unit testing.
+- **Source metadata per chunk** — every response includes which documents were consulted.
+- **Multi-stage Dockerfile** — production image is JRE-only Alpine (~80 MB vs ~400 MB JDK).
+- **Spring profiles** (`local` / `prod`) — `SimpleVectorStore` in-memory for local dev, pgvector for production.

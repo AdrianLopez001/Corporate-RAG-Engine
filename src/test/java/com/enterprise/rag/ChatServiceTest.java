@@ -16,25 +16,16 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ChatServiceTest {
 
-    @Mock
-    private VectorStore vectorStore;
-
-    @Mock
-    private ChatClient chatClient;
-
-    @Mock
-    private ChatClient.CallResponseSpec callResponseSpec;
-
-    @Mock
-    private ChatClient.ChatClientRequestSpec requestSpec;
-
-    @Mock
-    private ChatClient.ChatClientRequestSpec.SystemSpec systemSpec;
+    @Mock private VectorStore vectorStore;
+    @Mock private ChatClient chatClient;
+    @Mock private ChatClient.ChatClientRequestSpec requestSpec;
+    @Mock private ChatClient.CallResponseSpec callResponseSpec;
 
     private ChatService chatService;
 
@@ -43,36 +34,46 @@ class ChatServiceTest {
         chatService = new ChatService(vectorStore, chatClient);
     }
 
-    @Test
-    void shouldReturnAnswerWithSources() {
-        Document doc = new Document("Conteúdo relevante do documento.", Map.of("source", "manual.pdf"));
-        when(vectorStore.similaritySearch(any())).thenReturn(List.of(doc));
-
+    private void stubChatClient(String answer) {
         when(chatClient.prompt()).thenReturn(requestSpec);
         when(requestSpec.system(any())).thenReturn(requestSpec);
         when(requestSpec.user(anyString())).thenReturn(requestSpec);
         when(requestSpec.call()).thenReturn(callResponseSpec);
-        when(callResponseSpec.content()).thenReturn("Resposta gerada pelo modelo.");
+        when(callResponseSpec.content()).thenReturn(answer);
+    }
 
-        ChatResponse response = chatService.askQuestion("O que está no manual?");
+    @Test
+    void shouldReturnAnswerWithSources() {
+        Document doc = new Document("Relevant document content.", Map.of("source", "manual.pdf"));
+        when(vectorStore.similaritySearch(any())).thenReturn(List.of(doc));
+        stubChatClient("The answer based on the manual.");
 
-        assertThat(response.answer()).isEqualTo("Resposta gerada pelo modelo.");
+        ChatResponse response = chatService.askQuestion("What is in the manual?");
+
+        assertThat(response.answer()).isEqualTo("The answer based on the manual.");
         assertThat(response.sources()).containsExactly("manual.pdf");
     }
 
     @Test
-    void shouldHandleNoRelevantDocuments() {
+    void shouldDeduplicateSources() {
+        Document doc1 = new Document("First chunk.", Map.of("source", "report.pdf"));
+        Document doc2 = new Document("Second chunk.", Map.of("source", "report.pdf"));
+        when(vectorStore.similaritySearch(any())).thenReturn(List.of(doc1, doc2));
+        stubChatClient("Answer from two chunks of the same file.");
+
+        ChatResponse response = chatService.askQuestion("Summarize the report.");
+
+        assertThat(response.sources()).hasSize(1).containsExactly("report.pdf");
+    }
+
+    @Test
+    void shouldReturnEmptySourcesWhenNoDocumentsFound() {
         when(vectorStore.similaritySearch(any())).thenReturn(List.of());
+        stubChatClient("I do not have information on that topic.");
 
-        when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.system(any())).thenReturn(requestSpec);
-        when(requestSpec.user(anyString())).thenReturn(requestSpec);
-        when(requestSpec.call()).thenReturn(callResponseSpec);
-        when(callResponseSpec.content()).thenReturn("Não encontrei informações sobre esse tema.");
+        ChatResponse response = chatService.askQuestion("Unrelated question");
 
-        ChatResponse response = chatService.askQuestion("Pergunta sem contexto");
-
-        assertThat(response.answer()).contains("Não encontrei");
         assertThat(response.sources()).isEmpty();
+        assertThat(response.answer()).contains("I do not have information");
     }
 }
