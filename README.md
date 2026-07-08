@@ -114,6 +114,18 @@ Content-Type: application/json
 GET /actuator/health
 ```
 
+## 🧪 Testes Automáticos (Automated Tests)
+
+O projeto conta com testes unitários automatizados cobrindo a lógica de negócio e processamento de documentos sem depender de conexões reais com o banco pgvector ou com a API da OpenAI.
+
+*   **Testes do Pipeline RAG (`ChatServiceTest`)**: Valida o fluxo de busca semântica, cálculo de limiar de similaridade e formatação de fontes.
+*   **Testes de Ingestão (`IngestionServiceTest`)**: Valida o parser de documentos (Apache Tika) e tokenização semântica de textos.
+
+Para executar todos os testes da aplicação, execute o comando abaixo no diretório raiz:
+```bash
+mvn test
+```
+
 ## Design Decisions
 
 - **`similarityThreshold(0.70)`** — only chunks with meaningful semantic overlap reach the LLM, cutting noise and reducing hallucination risk.
