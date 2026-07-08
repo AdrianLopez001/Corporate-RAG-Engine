@@ -9,7 +9,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import java.util.function.Consumer;
 
 import java.util.List;
 import java.util.Map;
@@ -36,7 +38,7 @@ class ChatServiceTest {
 
     private void stubChatClient(String answer) {
         when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.system(any())).thenReturn(requestSpec);
+        when(requestSpec.system(any(Consumer.class))).thenReturn(requestSpec);
         when(requestSpec.user(anyString())).thenReturn(requestSpec);
         when(requestSpec.call()).thenReturn(callResponseSpec);
         when(callResponseSpec.content()).thenReturn(answer);
@@ -45,7 +47,7 @@ class ChatServiceTest {
     @Test
     void shouldReturnAnswerWithSources() {
         Document doc = new Document("Relevant document content.", Map.of("source", "manual.pdf"));
-        when(vectorStore.similaritySearch(any())).thenReturn(List.of(doc));
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(doc));
         stubChatClient("The answer based on the manual.");
 
         ChatResponse response = chatService.askQuestion("What is in the manual?");
@@ -58,7 +60,7 @@ class ChatServiceTest {
     void shouldDeduplicateSources() {
         Document doc1 = new Document("First chunk.", Map.of("source", "report.pdf"));
         Document doc2 = new Document("Second chunk.", Map.of("source", "report.pdf"));
-        when(vectorStore.similaritySearch(any())).thenReturn(List.of(doc1, doc2));
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(doc1, doc2));
         stubChatClient("Answer from two chunks of the same file.");
 
         ChatResponse response = chatService.askQuestion("Summarize the report.");
@@ -68,7 +70,7 @@ class ChatServiceTest {
 
     @Test
     void shouldReturnEmptySourcesWhenNoDocumentsFound() {
-        when(vectorStore.similaritySearch(any())).thenReturn(List.of());
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
         stubChatClient("I do not have information on that topic.");
 
         ChatResponse response = chatService.askQuestion("Unrelated question");
