@@ -1,16 +1,43 @@
-target/
+# Java / Maven ignores
+backend/target/
 *.class
 *.jar
 *.war
 *.ear
-.DS_Store
-.idea/
-*.iml
-.vscode/
-*.env
+backend/mvnw
+backend/mvnw.cmd
+backend/.mvn/
+application-local.yml
+
+# Node / React ignores
+node_modules/
+dist/
+dist-ssr/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment and local files
 .env
 .env.local
-application-local.yml
-mvnw
-mvnw.cmd
-.mvn/
+.env.development.local
+.env.test.local
+.env.production.local
+*.local
+.vercel/
+
+# Editor / OS ignores
+.DS_Store
+.idea/
+*.suo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vscode/
+!.vscode/extensions.json
+*.iml

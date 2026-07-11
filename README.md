@@ -1,136 +1,32 @@
-# Corporate RAG Engine
+# React + TypeScript + Vite
 
-![Java](https://img.shields.io/badge/Java-21-orange)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-brightgreen)
-![Spring AI](https://img.shields.io/badge/Spring%20AI-1.0.0-blue)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)
-![CI](https://github.com/AdrianLopez001/Corporate-RAG-Engine/actions/workflows/ci.yml/badge.svg)
+This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
-## Overview
+Currently, two official plugins are available:
 
-Enterprise-grade **Retrieval-Augmented Generation (RAG)** backend built with the industry-standard Java AI stack.
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-The system accepts document uploads (PDF, DOCX, TXT), splits them into semantic chunks, stores embeddings in a vector database, and answers natural-language questions using **only** the retrieved context — preventing hallucinations.
+## React Compiler
 
-## Architecture
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-```
-[Client] → POST /api/v1/documents/ingest (PDF / DOCX / TXT)
-               ↓
-         [IngestionService]
-         Apache Tika → TokenTextSplitter (1200 tokens, 350 overlap)
-               ↓
-         Embedding Model (text-embedding-3-small)
-               ↓
-         [pgvector — PostgreSQL / HNSW index]
+## Expanding the Oxlint configuration
 
-[Client] → POST /api/v1/chat/query
-               ↓
-         [ChatService]
-         similaritySearch (cosine · threshold=0.70 · topK=4)
-               ↓
-         System Prompt + Context → GPT-4o-mini
-               ↓
-         [ChatResponse: answer + source list]
-```
+If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
 
-## Tech Stack
-
-| Layer          | Technology                        |
-|----------------|-----------------------------------|
-| Framework      | Spring Boot 3.3 + Spring AI 1.0.0 |
-| LLM            | OpenAI GPT-4o-mini                |
-| Embeddings     | text-embedding-3-small (1536 dim) |
-| Vector Store   | PostgreSQL + pgvector (HNSW)      |
-| Document Parser| Apache Tika                       |
-| Containers     | Docker + Docker Compose           |
-| Java           | 21 (Records, Text Blocks)         |
-| API Docs       | SpringDoc OpenAPI 3 (Swagger UI)  |
-
-## Running Locally
-
-### Prerequisites
-- Docker Desktop running
-- OpenAI API key
-
-### 1. Copy environment file
-```bash
-cp .env.example .env
-# then edit .env and fill in OPENAI_API_KEY
-```
-
-### 2. Start the database
-```bash
-docker compose up postgres-vector -d
-```
-
-### 3. Run the application
-```bash
-./mvnw spring-boot:run
-```
-
-### Or run everything with Docker
-```bash
-docker compose up --build
-```
-
-### API Documentation
-Once running, open: `http://localhost:8080/swagger-ui.html`
-
-## API Reference
-
-### Ingest Document
-```http
-POST /api/v1/documents/ingest
-Content-Type: multipart/form-data
-
-file=@report.pdf
-```
 ```json
 {
-  "filename": "report.pdf",
-  "chunksCreated": 12,
-  "message": "Document ingested successfully."
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc"],
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+  }
 }
 ```
 
-### Ask a Question
-```http
-POST /api/v1/chat/query
-Content-Type: application/json
-
-{ "query": "What is the company vacation policy?" }
-```
-```json
-{
-  "answer": "According to the HR handbook, employees are entitled to...",
-  "sources": ["hr-handbook.pdf"]
-}
-```
-
-### Health Check
-```http
-GET /actuator/health
-```
-
-## 🧪 Testes Automáticos (Automated Tests)
-
-O projeto conta com testes unitários automatizados cobrindo a lógica de negócio e processamento de documentos sem depender de conexões reais com o banco pgvector ou com a API da OpenAI.
-
-*   **Testes do Pipeline RAG (`ChatServiceTest`)**: Valida o fluxo de busca semântica, cálculo de limiar de similaridade e formatação de fontes.
-*   **Testes de Ingestão (`IngestionServiceTest`)**: Valida o parser de documentos (Apache Tika) e tokenização semântica de textos.
-
-Para executar todos os testes da aplicação, execute o comando abaixo no diretório raiz:
-```bash
-mvn test
-```
-
-## Design Decisions
-
-- **`similarityThreshold(0.70)`** — only chunks with meaningful semantic overlap reach the LLM, cutting noise and reducing hallucination risk.
-- **`ProblemDetail` (RFC 7807)** — structured error responses compatible with any HTTP client.
-- **Constructor injection + `@RequiredArgsConstructor`** — immutability and straightforward unit testing.
-- **Source metadata per chunk** — every response includes which documents were consulted.
-- **Multi-stage Dockerfile** — production image is JRE-only Alpine (~80 MB vs ~400 MB JDK).
-- **Spring profiles** (`local` / `prod`) — `SimpleVectorStore` in-memory for local dev, pgvector for production.
+See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
