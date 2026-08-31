@@ -1,5 +1,6 @@
 package com.enterprise.rag.controller;
 
+import com.enterprise.rag.dto.DocumentInfo;
 import com.enterprise.rag.dto.IngestionResponse;
 import com.enterprise.rag.service.IngestionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,10 +10,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/documents")
 @RequiredArgsConstructor
-@Tag(name = "Documents", description = "Document ingestion endpoints")
+@Tag(name = "Documents", description = "Document ingestion & management endpoints")
+@CrossOrigin(origins = "*")
 public class DocumentController {
 
     private final IngestionService ingestionService;
@@ -31,5 +35,21 @@ public class DocumentController {
                 chunks,
                 "Document ingested successfully."
         ));
+    }
+
+    @Operation(summary = "List ingested documents", description = "Retrieves all indexed documents in vector store.")
+    @GetMapping
+    public ResponseEntity<List<DocumentInfo>> listDocuments() {
+        return ResponseEntity.ok(ingestionService.listDocuments());
+    }
+
+    @Operation(summary = "Delete an ingested document", description = "Removes a document and its vector embeddings.")
+    @DeleteMapping("/{filename}")
+    public ResponseEntity<Void> deleteDocument(@PathVariable String filename) {
+        boolean removed = ingestionService.deleteDocument(filename);
+        if (removed) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.notFound().build();
     }
 }
