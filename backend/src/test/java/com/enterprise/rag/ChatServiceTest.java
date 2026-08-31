@@ -1,6 +1,7 @@
 package com.enterprise.rag;
 
 import com.enterprise.rag.dto.ChatResponse;
+import com.enterprise.rag.dto.QueryRequest;
 import com.enterprise.rag.service.ChatService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,7 +51,7 @@ class ChatServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(doc));
         stubChatClient("The answer based on the manual.");
 
-        ChatResponse response = chatService.askQuestion("What is in the manual?");
+        ChatResponse response = chatService.askQuestion(new QueryRequest("What is in the manual?", null));
 
         assertThat(response.answer()).isEqualTo("The answer based on the manual.");
         assertThat(response.sources()).containsExactly("manual.pdf");
@@ -63,7 +64,7 @@ class ChatServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(doc1, doc2));
         stubChatClient("Answer from two chunks of the same file.");
 
-        ChatResponse response = chatService.askQuestion("Summarize the report.");
+        ChatResponse response = chatService.askQuestion(new QueryRequest("Summarize the report.", null));
 
         assertThat(response.sources()).hasSize(1).containsExactly("report.pdf");
     }
@@ -73,7 +74,7 @@ class ChatServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
         stubChatClient("I do not have information on that topic.");
 
-        ChatResponse response = chatService.askQuestion("Unrelated question");
+        ChatResponse response = chatService.askQuestion(new QueryRequest("Unrelated question", null));
 
         assertThat(response.sources()).isEmpty();
         assertThat(response.answer()).contains("I do not have information");
